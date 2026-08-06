@@ -285,6 +285,27 @@ Java_com_philj56_gbcc_GLActivity_checkRom(
 	return static_cast<jboolean>(ret);
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_philj56_gbcc_GLActivity_isRomGbc(
+		JNIEnv *env,
+		jobject,/* this */
+		jstring file) {
+	char *filename = get_utf_string(env, file);
+
+	pthread_mutex_lock(&render_mutex);
+	gbcc_initialise(&gbc.core, filename);
+
+	bool is_gbc = false;
+	bool ret = gbc.core.initialised;
+	if (ret) {
+		is_gbc = (gbc.core.mode == GBC);
+		gbcc_free(&gbc.core);
+	}
+	pthread_mutex_unlock(&render_mutex);
+	free(filename);
+	return static_cast<jboolean>(is_gbc);
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_philj56_gbcc_GLActivity_getErrorMessage(
 		JNIEnv *env,
