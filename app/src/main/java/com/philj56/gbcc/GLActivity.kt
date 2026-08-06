@@ -175,6 +175,7 @@ class GLActivity : BaseActivity(), SensorEventListener {
 
     private external fun chdir(dirName: String)
     private external fun checkRom(file: String): Boolean
+    private external fun isRomGbc(file: String): Boolean
     private external fun loadRom(
         file: String,
         sampleRate: Int,
@@ -534,7 +535,7 @@ class GLActivity : BaseActivity(), SensorEventListener {
             when (prefs.getString("skin", "auto")) {
                 "dmg" -> false
                 "gbc" -> true
-                else -> filename.endsWith("gbc")
+                else -> isRomGbc(filename)
             }
         )
 
