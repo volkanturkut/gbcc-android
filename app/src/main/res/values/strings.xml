@@ -5,6 +5,7 @@
 
     <!-- MainActivity -->
     <string name="base_directory_name">Files</string>
+    <string name="search_roms">Search</string>
     <string name="import_rom">Import</string>
     <string name="settings">Settings</string>
     <string name="create_folder">Create folder</string>

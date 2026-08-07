@@ -70,6 +70,7 @@ class MainActivity : BaseActivity() {
     private lateinit var currentDir: File
     private lateinit var baseDir: File
     private lateinit var binding: ActivityMainBinding
+    private var searchQuery = ""
 
     private var timeBackPressed: Long = 0
 
@@ -124,6 +125,32 @@ class MainActivity : BaseActivity() {
         binding.path.adapter = pathAdapter
         binding.path.itemAnimator = null
         changeDir(baseDir)
+
+        val searchItem = binding.mainToolbar.menu.findItem(R.id.searchItem)
+        val searchView = searchItem?.actionView as? androidx.appcompat.widget.SearchView
+        searchView?.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                searchQuery = newText ?: ""
+                updateFiles()
+                return true
+            }
+        })
+        searchItem?.setOnActionExpandListener(object : MenuItem.OnActionExpandListener {
+            override fun onMenuItemActionExpand(item: MenuItem): Boolean {
+                return true
+            }
+
+            override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
+                searchQuery = ""
+                updateFiles()
+                return true
+            }
+        })
+
         updateFiles()
 
         // Check if the version has changed since last launch, and perform some setup if so
@@ -171,6 +198,7 @@ class MainActivity : BaseActivity() {
     }
 
     private fun beginSelection() {
+        binding.mainToolbar.menu.findItem(R.id.searchItem)?.collapseActionView()
         TransitionManager.beginDelayedTransition(binding.mainLayout, toolbarTransition)
         binding.fileAppBarLayout.visibility = View.VISIBLE
         binding.mainAppBarLayout.visibility = View.INVISIBLE
@@ -201,7 +229,13 @@ class MainActivity : BaseActivity() {
                 { it.name.lowercase() }
             )
         )?.toCollection(ArrayList()) ?: ArrayList()
-        fileAdapter.submitList(files)
+
+        val filtered = if (searchQuery.isEmpty()) {
+            files
+        } else {
+            files.filter { it.nameWithoutExtension.contains(searchQuery, ignoreCase = true) }
+        }
+        fileAdapter.submitList(filtered)
     }
 
     private fun toggleSelection(file: File) {
@@ -220,6 +254,7 @@ class MainActivity : BaseActivity() {
     }
 
     private fun onPathItemClick(dir: File) {
+        binding.mainToolbar.menu.findItem(R.id.searchItem)?.collapseActionView()
         changeDir(baseDir.resolve(dir))
     }
 
@@ -235,6 +270,7 @@ class MainActivity : BaseActivity() {
             }
             SelectionMode.NORMAL -> {
                 if (file.isDirectory) {
+                    binding.mainToolbar.menu.findItem(R.id.searchItem)?.collapseActionView()
                     changeDir(file)
                 } else {
                     switchToGL(file.toString())
@@ -364,12 +400,10 @@ class MainActivity : BaseActivity() {
 
     private fun performDelete() {
         fileAdapter.selected.forEach { file ->
-            val index = files.indexOf(file)
-            files.removeAt(index)
             file.deleteRecursively()
-            fileAdapter.notifyItemRemoved(index)
         }
         clearSelection()
+        updateFiles()
     }
 
     private fun showDirectoryActionsDialog(file: File) {
@@ -795,6 +829,11 @@ class MainActivity : BaseActivity() {
     }
 
     private fun backPress() {
+        val searchItem = binding.mainToolbar.menu.findItem(R.id.searchItem)
+        if (searchItem?.isActionViewExpanded == true) {
+            searchItem.collapseActionView()
+            return
+        }
         if (currentDir != baseDir) {
             changeDir(currentDir.parentFile ?: baseDir)
             return
