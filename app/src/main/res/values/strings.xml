@@ -102,6 +102,8 @@
     <string name="settings_turbo_toggle">Show turbo toggle</string>
     <string name="settings_vsync">Vsync</string>
     <string name="settings_vsync_summary">Try to sync emulator speed to video refresh rate rather than audio</string>
+    <string name="settings_sgb_border">SGB borders</string>
+    <string name="settings_sgb_border_summary">Show game-specific border overlays for SGB-compatible games</string>
 
     <string name="settings_shader_gbc">GBC shader</string>
     <string name="settings_shader_dmg">DMG shader</string>
