@@ -221,7 +221,7 @@ class MainActivity : BaseActivity() {
 
     private fun updateFiles() {
         val unsorted = currentDir.listFiles { file ->
-            file.name.matches(Regex(".*\\.gbc?")) or file.isDirectory
+            file.name.matches(Regex(".*\\.(gbc?|zip|7z)", RegexOption.IGNORE_CASE)) or file.isDirectory
         }
         files = unsorted?.sortedWith(
             compareBy(
