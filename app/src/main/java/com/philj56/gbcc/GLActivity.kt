@@ -1602,6 +1602,7 @@ class GLActivity : BaseActivity(), SensorEventListener {
 
 class MyGLSurfaceView : GLSurfaceView {
     private var renderer: MyGLRenderer? = null
+    private var lastSgbActive = false
 
     constructor(context: Context) : super(context) {
         setup()
@@ -1621,10 +1622,20 @@ class MyGLSurfaceView : GLSurfaceView {
             // Create an OpenGL ES 3.0 context
             setEGLContextClientVersion(3)
 
-            renderer = MyGLRenderer()
+            renderer = MyGLRenderer(this)
 
             // Set the Renderer for drawing on the GLSurfaceView
             setRenderer(renderer)
+        }
+    }
+
+    fun checkSgbState() {
+        val sgbActive = isSgbBorderActive()
+        if (sgbActive != lastSgbActive) {
+            lastSgbActive = sgbActive
+            post {
+                requestLayout()
+            }
         }
     }
 
@@ -1643,31 +1654,34 @@ class MyGLSurfaceView : GLSurfaceView {
         val heightMode = MeasureSpec.getMode(heightMeasureSpec)
         val heightSize = MeasureSpec.getSize(heightMeasureSpec)
 
+        val baseWidth = if (isSgbBorderActive()) 256 else 160
+        val baseHeight = if (isSgbBorderActive()) 224 else 144
+
         var width = 0
         var height = 0
-        val scaleX = widthSize / 160
-        val scaleY = heightSize / 144
+        val scaleX = widthSize / baseWidth
+        val scaleY = heightSize / baseHeight
 
         when(widthMode) {
             MeasureSpec.EXACTLY -> width = widthSize
             MeasureSpec.AT_MOST -> Unit
-            MeasureSpec.UNSPECIFIED -> width = 160
+            MeasureSpec.UNSPECIFIED -> width = baseWidth
         }
 
         when(heightMode) {
             MeasureSpec.EXACTLY -> height = heightSize
             MeasureSpec.AT_MOST -> Unit
-            MeasureSpec.UNSPECIFIED -> height = 144
+            MeasureSpec.UNSPECIFIED -> height = baseHeight
         }
 
         if (width == 0 && height == 0) {
             val scale = min(scaleX, scaleY)
-            width = 160 * scale
-            height = 144 * scale
+            width = baseWidth * scale
+            height = baseHeight * scale
         } else if (width == 0) {
-            width = (height * 160) / 144
+            width = (height * baseWidth) / baseHeight
         } else if (height == 0) {
-            height = (width * 144) / 160
+            height = (width * baseHeight) / baseWidth
         }
 
         setMeasuredDimension(width, height)
@@ -1678,10 +1692,11 @@ class MyGLSurfaceView : GLSurfaceView {
         super.surfaceDestroyed(holder)
     }
 
+    private external fun isSgbBorderActive(): Boolean
     private external fun destroyWindow()
 }
 
-class MyGLRenderer : GLSurfaceView.Renderer {
+class MyGLRenderer(private val view: MyGLSurfaceView) : GLSurfaceView.Renderer {
 
     override fun onSurfaceCreated(unused: GL10, config: EGLConfig) {
         initWindow()
@@ -1689,6 +1704,7 @@ class MyGLRenderer : GLSurfaceView.Renderer {
 
     override fun onDrawFrame(unused: GL10) {
         updateWindow()
+        view.checkSgbState()
     }
 
     override fun onSurfaceChanged(unused: GL10, width: Int, height: Int) {
