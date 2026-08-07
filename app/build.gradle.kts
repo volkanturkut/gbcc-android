@@ -73,6 +73,8 @@ android {
 
 dependencies {
 	implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+	implementation("org.apache.commons:commons-compress:1.24.0")
+	implementation("org.tukaani:xz:1.9")
 	implementation("androidx.camera:camera-core:1.2.2")
 	implementation("androidx.camera:camera-camera2:1.2.2")
 	implementation("androidx.camera:camera-lifecycle:1.2.2")
