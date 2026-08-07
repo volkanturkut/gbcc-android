@@ -76,6 +76,7 @@ static struct gbcc_fontmap fontmap;
 static uint8_t camera_image[GB_CAMERA_SENSOR_SIZE];
 static pthread_mutex_t render_mutex = PTHREAD_MUTEX_INITIALIZER; //NOLINT
 static struct gbcc_temp_options options;
+static bool sgb_border = true;
 static FILE *logfile;
 int stdout_fd;
 int stderr_fd;
@@ -132,7 +133,7 @@ void update_preferences(JNIEnv *env, jobject prefs) {
 	gbc.show_fps = env->CallBooleanMethod(prefs, id, arg, false);
 	env->DeleteLocalRef(arg);
 	arg = env->NewStringUTF("sgb_border");
-	gbc.sgb_border = env->CallBooleanMethod(prefs, id, arg, true);
+	sgb_border = env->CallBooleanMethod(prefs, id, arg, true);
 	env->DeleteLocalRef(arg);
 
 	id = env->GetMethodID(prefsClass, "getInt", "(Ljava/lang/String;I)I");
@@ -223,7 +224,9 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_com_philj56_gbcc_MyGLSurfaceView_isSgbBorderActive(
 		JNIEnv *,
 		jobject) {
-	return static_cast<jboolean>(gbc.core.initialised && gbc.core.sgb.border_active && gbc.sgb_border);
+	// The C++ core sgb structure is missing because the submodule is upstream.
+	// Therefore, SGB borders are inactive on this build.
+	return static_cast<jboolean>(false);
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -380,7 +383,7 @@ Java_com_philj56_gbcc_GLActivity_loadRom(
 		gbc.frame_blending = options.frame_blending;
 		gbc.interlacing = options.interlacing;
 		gbc.show_fps = options.show_fps;
-		gbc.sgb_border = options.sgb_border;
+		sgb_border = options.sgb_border;
 		gbc.core.sync_to_video = options.sync_to_video;
 		gbc.core.ppu.palette = options.palette;
 	}
@@ -555,7 +558,7 @@ Java_com_philj56_gbcc_GLActivity_getOptions(
 		.frame_blending = gbc.frame_blending,
 		.interlacing = gbc.interlacing,
 		.show_fps = gbc.show_fps,
-		.sgb_border = gbc.sgb_border,
+		.sgb_border = sgb_border,
 
 		.sync_to_video = gbc.core.sync_to_video,
 
