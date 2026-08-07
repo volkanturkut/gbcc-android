@@ -629,31 +629,6 @@ class MainActivity : BaseActivity() {
             }
         }
 
-        fun importZipWithCharset(iStream: InputStream, charset: Charset) : Exception? {
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    ZipInputStream(iStream, charset)
-                } else {
-                    ZipInputStream(iStream)
-                }.use { zip ->
-                    var entry = zip.nextEntry
-                    while (entry != null) {
-                        if (entry.name.matches(Regex(".*\\.(gbc?|sav|s[0-9])"))) {
-                            doCopy(zip, entry.name)
-                        }
-                        entry = zip.nextEntry
-                    }
-                }
-            } catch (e: IllegalArgumentException) {
-                return e
-            } catch (e: ZipException) {
-                return e
-            } catch (e: IOException) {
-                return e
-            }
-            return null
-        }
-
         fun showImportFailToast() {
             runOnUiThread {
                 Toast.makeText(
@@ -691,7 +666,9 @@ class MainActivity : BaseActivity() {
             }
             contentResolver.getType(uri).equals("application/zip")
                     or contentResolver.getType(uri).equals("application/x-zip-compressed")
-                    or name.endsWith("zip") -> {
+                    or contentResolver.getType(uri).equals("application/x-7z-compressed")
+                    or name.endsWith("zip", ignoreCase = true)
+                    or name.endsWith("7z", ignoreCase = true) -> {
                 val iStream =
                     try {
                         contentResolver.openInputStream(uri)
@@ -702,38 +679,8 @@ class MainActivity : BaseActivity() {
                     showImportFailToast()
                     return
                 }
-                // We have no way of knowing what encoding was used to create the zip,
-                // so just try utf-8, then cp437, then give up
-                var e = importZipWithCharset(iStream, StandardCharsets.UTF_8)
-                if (e != null) {
-                    // importZipWithCharset closes the input stream, so we have to open a new one
-                    val iStream2 =
-                        try {
-                            contentResolver.openInputStream(uri)
-                        } catch (e: FileNotFoundException) {
-                            null
-                        }
-                    if (iStream2 == null) {
-                        showImportFailToast()
-                        return
-                    }
-                    e = importZipWithCharset(iStream2, Charset.forName("Cp437"))
-                    if (e != null) {
-                        runOnUiThread {
-                            MaterialAlertDialogBuilder(this).run {
-                                setTitle(
-                                    resources.getString(
-                                        R.string.error_zip_title,
-                                        e.message
-                                    )
-                                )
-                                setMessage(R.string.error_zip_body)
-                                setPositiveButton(android.R.string.ok, null)
-                                show()
-                            }
-                        }
-                    }
-                }
+                doCopy(iStream, name)
+                iStream.close()
             }
             else -> {
                 runOnUiThread {
