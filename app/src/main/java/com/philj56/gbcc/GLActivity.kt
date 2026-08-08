@@ -165,6 +165,7 @@ class GLActivity : BaseActivity(), SensorEventListener {
     private var lastRightTrigger = false
     private var disableAccelerometer = false
     private lateinit var saveDir : String
+    private var romPathToLoad : String = ""
     private var tempOptions : ByteArray? = null
     private var tempExtractedRom: File? = null
     private var printerByteArray : ByteArray = ByteArray(0)
@@ -524,8 +525,46 @@ class GLActivity : BaseActivity(), SensorEventListener {
         if (filename == "") {
             Log.e("GBCC", "No rom provided.")
             finish()
+            return
         }
-        if (!checkRom(filename)) {
+
+        romPathToLoad = filename
+        if (filename.endsWith(".zip", ignoreCase = true)) {
+            val zis = ZipInputStream(File(filename).inputStream())
+            var entry = zis.nextEntry
+            while (entry != null) {
+                if (entry.name.matches(Regex(".*\\.gbc?", RegexOption.IGNORE_CASE))) {
+                    tempExtractedRom = File(cacheDir, "${File(filename).nameWithoutExtension}.${File(entry.name).extension}")
+                    tempExtractedRom?.outputStream()?.use { out -> zis.copyTo(out) }
+                    romPathToLoad = tempExtractedRom!!.absolutePath
+                    break
+                }
+                entry = zis.nextEntry
+            }
+            zis.close()
+        } else if (filename.endsWith(".7z", ignoreCase = true)) {
+            val sevenZFile = SevenZFile(File(filename))
+            var entry = sevenZFile.nextEntry
+            while (entry != null) {
+                if (entry.name.matches(Regex(".*\\.gbc?", RegexOption.IGNORE_CASE))) {
+                    tempExtractedRom = File(cacheDir, "${File(filename).nameWithoutExtension}.${File(entry.name).extension}")
+                    tempExtractedRom?.outputStream()?.use { out ->
+                        val buffer = ByteArray(4096)
+                        while (true) {
+                            val bytesRead = sevenZFile.read(buffer)
+                            if (bytesRead == -1) break
+                            out.write(buffer, 0, bytesRead)
+                        }
+                    }
+                    romPathToLoad = tempExtractedRom!!.absolutePath
+                    break
+                }
+                entry = sevenZFile.nextEntry
+            }
+            sevenZFile.close()
+        }
+
+        if (!checkRom(romPathToLoad)) {
             Toast.makeText(
                 this,
                 "Error loading ROM:\n" + getErrorMessage().trim(),
@@ -538,7 +577,7 @@ class GLActivity : BaseActivity(), SensorEventListener {
             when (prefs.getString("skin", "auto")) {
                 "dmg" -> false
                 "gbc" -> true
-                else -> isRomGbc(filename)
+                else -> isRomGbc(romPathToLoad)
             }
         )
 
@@ -747,43 +786,8 @@ class GLActivity : BaseActivity(), SensorEventListener {
             if (it.exists()) it else null
         }
 
-        var romPathToLoad = filename
-        if (filename.endsWith(".zip", ignoreCase = true)) {
-            val zis = ZipInputStream(File(filename).inputStream())
-            var entry = zis.nextEntry
-            while (entry != null) {
-                if (entry.name.matches(Regex(".*\\.gbc?", RegexOption.IGNORE_CASE))) {
-                    tempExtractedRom = File(cacheDir, "${File(filename).nameWithoutExtension}.${File(entry.name).extension}")
-                    tempExtractedRom?.outputStream()?.use { out -> zis.copyTo(out) }
-                    romPathToLoad = tempExtractedRom!!.absolutePath
-                    break
-                }
-                entry = zis.nextEntry
-            }
-            zis.close()
-        } else if (filename.endsWith(".7z", ignoreCase = true)) {
-            val sevenZFile = SevenZFile(File(filename))
-            var entry = sevenZFile.nextEntry
-            while (entry != null) {
-                if (entry.name.matches(Regex(".*\\.gbc?", RegexOption.IGNORE_CASE))) {
-                    tempExtractedRom = File(cacheDir, "${File(filename).nameWithoutExtension}.${File(entry.name).extension}")
-                    tempExtractedRom?.outputStream()?.use { out ->
-                        val buffer = ByteArray(4096)
-                        while (true) {
-                            val bytesRead = sevenZFile.read(buffer)
-                            if (bytesRead == -1) break
-                            out.write(buffer, 0, bytesRead)
-                        }
-                    }
-                    romPathToLoad = tempExtractedRom!!.absolutePath
-                    break
-                }
-                entry = sevenZFile.nextEntry
-            }
-            sevenZFile.close()
-        }
-
         tempOptions?.let { setOptions(it) }
+
         loadedSuccessfully = loadRom(
             romPathToLoad,
             sampleRate,
